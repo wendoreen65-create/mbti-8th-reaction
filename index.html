@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>荣格八维心智推演系统 (Gemini 3 Pro)</title>
+    <!-- 依赖加载 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 字体加载 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-lite-webfont@1.1.0/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+    <!-- 图标库 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        .font-healing { font-family: 'Nunito', 'LXGW WenKai Lite', sans-serif; }
+        .font-cursive { font-family: 'Dancing Script', cursive; }
+        
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+            20% { opacity: 0.5; transform: scale(1.1); }
+            80% { opacity: 0.5; transform: scale(0.9); }
+            100% { transform: translateY(-100vh) translateX(30px) scale(1); opacity: 0; }
+        }
+        .animate-float { animation: float linear infinite; }
+        
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+        
+        /* 极致通透玻璃面板：35% 不透明度 + 12px 模糊 */
+        .glass-panel { 
+            background: rgba(15, 17, 26, 0.35); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+        }
+
+        .mbti-btn-active { 
+            background: rgba(233, 210, 230, 0.25); 
+            border-color: rgba(233, 210, 230, 0.6); 
+            transform: scale(1.05); 
+            box-shadow: 0 0 15px rgba(233, 210, 230, 0.2);
+        }
+
+        .scenario-pill {
+            background: rgba(255, 250, 161, 0.1);
+            border: 1px solid rgba(255, 250, 161, 0.2);
+            transition: all 0.3s ease;
+        }
+        .scenario-pill:hover {
+            background: rgba(255, 250, 161, 0.2);
+            border-color: #fffaa1;
+        }
+    </style>
+</head>
+<body class="bg-[#050608] overflow-x-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 图标组件封装
+        const Icon = ({ name, color = "currentColor", size = 16, className = "" }) => {
+            const containerRef = useRef(null);
+            useEffect(() => {
+                if (window.lucide && containerRef.current) {
+                    try {
+                        containerRef.current.innerHTML = `<i data-lucide="${name.toLowerCase()}" style="width:${size}px;height:${size}px;stroke:${color};stroke-width:2px;fill:none;"></i>`;
+                        window.lucide.createIcons();
+                    } catch (e) {}
+                }
+            }, [name, color, size]);
+            return <span ref={containerRef} className={`inline-flex items-center justify-center leading-none ${className}`}></span>;
+        };
+
+        const MBTI_TYPES = [
+            { id: 'INTJ', eng: 'architect' }, { id: 'INTP', eng: 'logician' },
+            { id: 'ENTJ', eng: 'commander' }, { id: 'ENTP', eng: 'debater' },
+            { id: 'INFJ', eng: 'advocate' }, { id: 'INFP', eng: 'mediator' },
+            { id: 'ENFJ', eng: 'protagonist' }, { id: 'ENFP', eng: 'campaigner' },
+            { id: 'ISTJ', eng: 'logistician' }, { id: 'ISFJ', eng: 'defender' },
+            { id: 'ESTJ', eng: 'executive' }, { id: 'ESFJ', eng: 'consul' },
+            { id: 'ISTP', eng: 'virtuoso' }, { id: 'ISFP', eng: 'adventurer' },
+            { id: 'ESTP', eng: 'entrepreneur' }, { id: 'ESFP', eng: 'entertainer' }
+        ];
+
+        const PRESET_SCENARIOS = [
+            { id: 1, tag: "职场", title: "方案被毙", content: "辛苦准备一周的提案在会议上被老板当众否定，批评语气严厉且不留情面。" },
+            { id: 2, tag: "情感", title: "冷战僵局", content: "伴侣突然变得沉默寡言，拒绝沟通且不说明原因，家里气氛降至冰点。" },
+            { id: 3, tag: "社交", title: "被迫破冰", content: "被朋友带去一个全是陌生人的聚会，朋友中途离开，你不得不开始面对社交。" },
+            { id: 4, tag: "危机", title: "证件丢失", content: "在异地旅途中发现包包丢失，包含身份证、护照和所有现金卡片。" }
+        ];
+
+        const DEFAULT_BG = "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=2500";
+
+        function App() {
+            const [situation, setSituation] = useState('');
+            const [selectedMbti, setSelectedMbti] = useState('INFP');
+            const [displayMbti, setDisplayMbti] = useState('INFP');
+            const [loading, setLoading] = useState(false);
+            const [result, setResult] = useState(null);
+            const [error, setError] = useState('');
+            const [bgImage, setBgImage] = useState(DEFAULT_BG);
+
+            const handleGenerate = async () => {
+                // ⚠️ 请在此填入 API KEY
+                const apiKey = "sk-9vS8wnHyReUjEzPCXLm5qg9Fbk87lGJN7jHLIpsNy2AYnFJH"; 
+
+                if (!situation.trim()) { setError('请输入具体的情境！'); return; }
+                if (!apiKey) { setError('未检测到 API Key。请在代码第 102 行填入密钥。'); return; }
+
+                setLoading(true); setError(''); setResult(null); setDisplayMbti(selectedMbti);
+
+                // 使用用户指定的 URL 和模型
+                const baseUrl = "https://new.lemonapi.site/v1";
+                const modelName = "[L]gemini-3-pro-preview";
+                const url = `${baseUrl}/models/${modelName}:generateContent?key=${apiKey}`;
+
+                const systemPrompt = `你是一个精通荣格八维和MBTI的心理推演专家。要求：客观、极简、禁止煽情。必须返回纯JSON格式，严禁包含Markdown代码块标识。JSON结构：{ "coreReaction": "一句话核心本能反应", "functions": [{"role": "1st", "name": "Ni", "desc": "感知推演(少于30字)"}, {"role": "2nd", "name": "Te", "desc": "描述"}, {"role": "3rd", "name": "Fi", "desc": "描述"}, {"role": "4th", "name": "Se", "desc": "描述"}], "shadowTrigger": "触发阴暗面的条件或null", "behaviors": ["行为1", "行为2"], "advice": {"action": "具体建议", "psychology": "心态"}, "shadowFunctions": [{"role": "5th", "name": "Ne", "desc": ""}, {"role": "6th", "name": "Ti", "desc": ""}, {"role": "7th", "name": "Fe", "desc": ""}, {"role": "8th", "name": "Si", "desc": ""}] }`;
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: `情境：${situation}\n主角：${selectedMbti}` }] }],
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            generationConfig: { responseMimeType: "application/json", temperature: 0.8 }
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(`[${response.status}] ${data.error?.message || "接口调用异常"}`);
+                    }
+
+                    let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    // 鲁棒性处理：清洗可能出现的 Markdown 标记
+                    text = text.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
+                    setResult(JSON.parse(text));
+                } catch (err) {
+                    console.error("API Error:", err);
+                    setError(`解码失败。原因：${err.message}。请检查 API Key 状态或代理地址可用性。`);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const avatarUrl = (id) => `https://www.16personalities.com/static/images/personality-types/avatars/${id.toLowerCase()}-${MBTI_TYPES.find(t=>t.id===id).eng}.svg`;
+
+            return (
+                <div className="min-h-screen font-healing text-white selection:bg-[#fffaa1]/30 relative overflow-x-hidden p-4 md:p-8">
+                    {/* 背景与滤镜 */}
+                    <div className="fixed inset-0 z-0 bg-cover bg-center transition-all duration-1000 saturate-[1.2]" style={{ backgroundImage: `url('${bgImage}')` }}>
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-[12px]"></div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1c29]/30 via-transparent to-[#0c0d14]/90"></div>
+                    </div>
+                    
+                    {/* 气泡动画 */}
+                    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden mix-blend-screen">
+                        {[...Array(15)].map((_, i) => (
+                            <div key={i} className={`absolute rounded-full animate-float opacity-[0.25] blur-[2px] ${['bg-[#e9d2e6]','bg-[#fffaa1]','bg-[#a0d9e8]','bg-[#d8ef74]'][i%4]}`}
+                                style={{ width: `${Math.random()*40+15}px`, height: `${Math.random()*40+15}px`, left: `${Math.random()*100}%`, bottom: '-15%', animationDuration: `${12+Math.random()*8}s`, animationDelay: `${i*1.1}s` }}>
+                                <div className="absolute top-[15%] left-[20%] w-1/4 h-1/4 bg-white/50 rounded-full blur-[1px]"></div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-6">
+                        <header className="text-center py-4">
+                            <h1 className="text-5xl md:text-7xl font-cursive bg-clip-text text-transparent bg-gradient-to-r from-[#fffaa1] via-[#a0d9e8] to-[#e9d2e6] drop-shadow-lg">Cognitive Dynamics</h1>
+                            <p className="text-xs tracking-[0.4em] opacity-50 mt-3 font-light uppercase tracking-widest">荣格八维心智推演系统 (Gemini 3 Pro)</p>
+                        </header>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                            {/* 控制区域 */}
+                            <div className="lg:col-span-5 flex flex-col gap-6">
+                                {/* 情境面板 - 暖黄 */}
+                                <div className="glass-panel p-6 rounded-[2.5rem] space-y-4 transition-all shadow-xl">
+                                    <label className="text-[#fffaa1] text-xs font-bold tracking-widest flex items-center gap-2 drop-shadow-sm uppercase">
+                                        <Icon name="Compass" color="#fffaa1" /> 设定情境 / Context
+                                    </label>
+                                    
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {PRESET_SCENARIOS.map(s => (
+                                            <button key={s.id} onClick={() => setSituation(s.content)}
+                                                className="scenario-pill px-3 py-1.5 rounded-full text-[10px] text-[#fffaa1]/90">
+                                                #{s.tag} {s.title}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <textarea value={situation} onChange={e => setSituation(e.target.value)} 
+                                        className="w-full h-36 bg-black/40 border border-[#fffaa1]/20 rounded-2xl p-4 text-sm focus:outline-none focus:border-[#fffaa1]/60 transition-all placeholder:opacity-30 leading-relaxed font-healing"
+                                        placeholder="请描述一个具体的冲突情境..." 
+                                    />
+                                    
+                                    {/* 小贴士 - 柔和紫粉 */}
+                                    <div className="bg-[#e9d2e6]/10 border border-[#e9d2e6]/20 p-3.5 rounded-2xl flex gap-3 shadow-sm">
+                                        <Icon name="Sparkles" color="#e9d2e6" size={14} className="mt-0.5 shrink-0" />
+                                        <p className="text-[11px] text-[#e9d2e6] leading-snug font-medium tracking-tight">
+                                            小贴士：输入目标对象当前所面临的情境，可以尝试加入具体冲突和压力点获得更精准的反馈。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* 类型选择 - 柔和紫粉 */}
+                                <div className="glass-panel p-6 rounded-[2.5rem] space-y-4 shadow-xl">
+                                    <label className="text-[#e9d2e6] text-xs font-bold tracking-widest flex items-center gap-2 uppercase drop-shadow-sm">
+                                        <Icon name="User" color="#e9d2e6" /> 目标主角 / Subject
+                                    </label>
+                                    <div className="grid grid-cols-4 gap-2.5">
+                                        {MBTI_TYPES.map(t => (
+                                            <button key={t.id} onClick={() => setSelectedMbti(t.id)}
+                                                className={`flex flex-col items-center p-2 rounded-2xl transition-all border duration-300 ${selectedMbti === t.id ? 'mbti-btn-active' : 'bg-white/5 border-transparent opacity-40 hover:opacity-100'}`}>
+                                                <img src={avatarUrl(t.id)} className="w-9 h-9" />
+                                                <span className={`text-[10px] mt-1.5 font-bold tracking-tighter ${selectedMbti === t.id ? 'text-white' : 'text-slate-300'}`}>{t.id}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex justify-between items-center px-2">
+                                        <label className="text-[10px] opacity-40 hover:opacity-100 cursor-pointer flex items-center gap-2 transition-opacity font-bold uppercase">
+                                            <Icon name="Image" size={12} /> Bg Image <input type="file" className="hidden" onChange={e => setBgImage(URL.createObjectURL(e.target.files[0]))} />
+                                        </label>
+                                        {bgImage !== DEFAULT_BG && <button onClick={() => setBgImage(DEFAULT_BG)} className="text-[10px] opacity-40 hover:text-red-400 font-bold uppercase">Reset</button>}
+                                    </div>
+                                    <button onClick={handleGenerate} disabled={loading} 
+                                        className="w-full py-4.5 bg-[#fffaa1] text-[#2d2e14] font-black rounded-3xl tracking-[0.2em] shadow-xl active:scale-95 transition-all disabled:opacity-50">
+                                        {loading ? '同步心智信号...' : '解码心智回路'}
+                                    </button>
+                                    {error && <div className="text-[#fffaa1] text-[11px] p-4 bg-red-900/40 border border-red-500/30 rounded-2xl leading-relaxed text-center shadow-lg">{error}</div>}
+                                </div>
+                            </div>
+
+                            {/* 结果区域 */}
+                            <div className="lg:col-span-7 h-full">
+                                <div className={`glass-panel p-6 md:p-10 rounded-[3rem] min-h-[600px] flex flex-col transition-all duration-500 ${!result && !loading ? 'justify-center items-center text-center' : ''}`}>
+                                    {!result && !loading ? (
+                                        <div className="opacity-30 flex flex-col items-center gap-6 animate-pulse">
+                                            <Icon name="Brain" size={80} />
+                                            <div>
+                                                <p className="text-2xl font-black tracking-[0.3em] uppercase">Awaiting Signal</p>
+                                                <p className="text-sm font-light mt-2 italic">请设定情境并点击解码。</p>
+                                            </div>
+                                        </div>
+                                    ) : loading ? (
+                                        <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                                            <div className="relative">
+                                                <div className="w-24 h-24 border-2 border-[#fffaa1]/40 rounded-full animate-[ping_2s_infinite]"></div>
+                                                <Icon name="Zap" color="#fffaa1" size={32} className="absolute inset-0 m-auto" />
+                                            </div>
+                                            <p className="text-[#fffaa1] font-black tracking-[0.2em] uppercase text-lg">Synching Consciousness...</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                                            <div className="flex items-center space-x-5 border-b border-white/10 pb-6">
+                                                <img src={avatarUrl(displayMbti)} className="w-16 h-16 drop-shadow-lg" />
+                                                <div>
+                                                    <h2 className="text-2xl md:text-3xl font-black tracking-wide uppercase">{displayMbti} 心智投影</h2>
+                                                    <p className="text-[#fffaa1]/70 text-xs tracking-[0.3em] font-light uppercase tracking-widest mt-1">Analysis Mode: [L]Gemini-3</p>
+                                                </div>
+                                            </div>
+
+                                            {/* 核心本能 - 暖黄 */}
+                                            <div className="bg-[#fffaa1]/10 border border-[#fffaa1]/30 p-6 rounded-[2rem] relative overflow-hidden group shadow-inner">
+                                                <div className="absolute top-0 right-0 w-32 h-32 bg-[#fffaa1]/10 blur-3xl -mr-10 -mt-10 rounded-full"></div>
+                                                <h4 className="text-[#fffaa1] text-[10px] font-black tracking-widest mb-1.5 opacity-80 uppercase">Core Instinct / 核心本能</h4>
+                                                <p className="text-base md:text-lg font-bold leading-relaxed">{result.coreReaction}</p>
+                                            </div>
+
+                                            {/* 阳面认知 - 暖黄 */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {result.functions.map((f, i) => (
+                                                    <div key={i} className="bg-white/5 p-5 rounded-2xl border border-[#fffaa1]/15 hover:border-[#fffaa1]/50 transition-all shadow-sm">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                            <span className="text-[10px] text-[#fffaa1] font-black uppercase opacity-60 tracking-tighter">{f.role}</span>
+                                                            <span className="text-[10px] bg-[#fffaa1] text-[#2d2e14] px-2.5 py-0.5 rounded-full font-black">{f.name}</span>
+                                                        </div>
+                                                        <p className="text-[13px] opacity-90 leading-relaxed font-light">{f.desc}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* 行为预测 - 清透蓝 */}
+                                            <div className="bg-[#a0d9e8]/5 border border-[#a0d9e8]/30 p-6 rounded-[2rem] shadow-sm">
+                                                <h4 className="text-[#a0d9e8] text-[10px] font-black mb-4 flex items-center gap-2 tracking-widest uppercase">
+                                                    <Icon name="ChevronRight" color="#a0d9e8" size={14} /> Behaviors / 行为预测
+                                                </h4>
+                                                <ul className="space-y-3">
+                                                    {result.behaviors.map((b, i) => (
+                                                        <li key={i} className="text-sm opacity-90 leading-snug flex items-start gap-3 font-light font-healing">
+                                                            <span className="w-1.5 h-1.5 bg-[#a0d9e8] mt-1.5 rounded-full shrink-0 shadow-[0_0_8px_#a0d9e8]"></span> {b}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+
+                                            {/* 应对建议 - 嫩芽绿 */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="bg-[#d8ef74]/10 border border-[#d8ef74]/30 p-5 rounded-2xl">
+                                                    <div className="text-[#d8ef74] text-[9px] font-black mb-2 tracking-widest opacity-80 uppercase flex items-center gap-2"><Icon name="Zap" size={12} color="#d8ef74" /> Action / 行动指南</div>
+                                                    <p className="text-xs leading-relaxed opacity-90 font-medium">{result.advice.action}</p>
+                                                </div>
+                                                <div className="bg-[#d8ef74]/10 border border-[#d8ef74]/30 p-5 rounded-2xl">
+                                                    <div className="text-[#d8ef74] text-[9px] font-black mb-2 tracking-widest opacity-80 uppercase flex items-center gap-2"><Icon name="Heart" size={12} color="#d8ef74" /> Psyche / 心理调节</div>
+                                                    <p className="text-xs leading-relaxed opacity-90 font-medium">{result.advice.psychology}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* 阴暗面 - 柔和紫粉 */}
+                                            <div className="relative pt-10 pb-4">
+                                                <div className="absolute inset-0 flex items-center px-4"><div className="w-full border-t border-[#e9d2e6]/20"></div></div>
+                                                <div className="relative flex justify-center">
+                                                    <span className="bg-[#10121a] border border-[#e9d2e6]/20 px-6 py-2 rounded-full text-[9px] text-[#e9d2e6] tracking-[0.4em] font-black uppercase shadow-lg">Shadow Projection</span>
+                                                </div>
+                                            </div>
+
+                                            {result.shadowTrigger && result.shadowTrigger !== "null" && (
+                                                <div className="bg-[#e9d2e6]/10 border border-[#e9d2e6]/30 p-5 rounded-2xl text-sm italic opacity-80 text-center leading-relaxed font-medium font-healing">
+                                                    <p>"{result.shadowTrigger}"</p>
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-2 gap-4 opacity-70 hover:opacity-100 transition-opacity">
+                                                {result.shadowFunctions?.map((f, i) => (
+                                                    <div key={i} className="bg-black/30 p-4 rounded-2xl border border-[#e9d2e6]/10 shadow-inner">
+                                                        <div className="flex justify-between items-center mb-2">
+                                                            <span className="text-[8px] text-[#e9d2e6] uppercase font-black opacity-60">{f.role}</span>
+                                                            <span className="text-[8px] border border-[#e9d2e6]/40 text-[#e9d2e6] px-1.5 rounded font-bold">{f.name}</span>
+                                                        </div>
+                                                        <p className="text-[11px] leading-relaxed font-light opacity-80 italic">{f.desc}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="h-10"></div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
