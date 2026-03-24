@@ -27,7 +27,6 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
         
-        /* 极致通透玻璃面板：35% 不透明度 + 12px 模糊 */
         .glass-panel { 
             background: rgba(15, 17, 26, 0.35); 
             backdrop-filter: blur(12px); 
@@ -59,7 +58,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // 图标组件封装
         const Icon = ({ name, color = "currentColor", size = 16, className = "" }) => {
             const containerRef = useRef(null);
             useEffect(() => {
@@ -103,51 +101,53 @@
             const [bgImage, setBgImage] = useState(DEFAULT_BG);
 
             const handleGenerate = async () => {
-                // API KEY
-                const apiKey = "sk-9vS8wnHyReUjEzPCXLm5qg9Fbk87lGJN7jHLIpsNy2AYnFJH"; 
+                const apiKey = "sk-02c64907d4564bf7a2f3fe76dff605e1"; 
+                const apiUrl = "https://api.deepseek.com/chat/completions";
 
                 if (!situation.trim()) { setError('请输入具体的情境！'); return; }
                 if (!apiKey) { setError('未检测到有效配置。'); return; }
 
                 setLoading(true); setError(''); setResult(null); setDisplayMbti(selectedMbti);
 
-                const baseUrl = "https://new.lemonapi.site/v1";
-                const modelName = "[L]gemini-3-pro-preview";
-                const url = `${baseUrl}/models/${modelName}:generateContent?key=${apiKey}`;
-
                 const systemPrompt = `你是一个精通荣格八维和MBTI的心理推演专家。客观、极简、禁止煽情。必须返回纯JSON格式，严禁包含Markdown代码块标识。
                 推演要求：针对设定的情境和主角性格，直接推演其心理运作。
                 注意：
-                1. functions 的 role 字段必须依次为："1st 主导功能"、"2nd 辅助功能"、"3rd 第三功能"、"4th 劣势功能"。
-                2. shadowFunctions 的 role 字段必须依次为："5th 对立功能"、"6th 批判功能"、"7th 盲点功能"、"8th 恶魔功能"。
-                3. name 字段请写出英文缩写及中文全称，如 "Ni (内倾直觉)"。
+                1. 描述必须直接进入分析核心，禁止使用“XX功能启动/激活”、“通过XX功能...”等开场白，请直接描述具体的认知逻辑。
+                2. functions 的 role 字段必须依次为："1st 主导功能"、"2nd 辅助功能"、"3rd 第三功能"、"4th 劣势功能"。
+                3. shadowFunctions 的 role 字段必须依次为："5th 对立功能"、"6th 批判功能"、"7th 盲点功能"、"8th 恶魔功能"。
+                4. name 字段请写出英文缩写及中文全称，如 "Ni (内倾直觉)"。
                 JSON结构：{ 
                     "coreReaction": "一句话核心反应", 
-                    "functions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述"}], 
+                    "functions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述具体想法(少于30字)"}], 
                     "behaviors": ["行为预测"], 
                     "advice": {"action": "具体建议", "psychology": "心态参考"}, 
-                    "shadowFunctions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述"}] 
+                    "shadowFunctions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述描述具体想法(少于30字)"}] 
                 }`;
 
                 try {
-                    const response = await fetch(url, {
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: `情境：${situation}\n主角：${selectedMbti}` }] }],
-                            systemInstruction: { parts: [{ text: systemPrompt }] },
-                            generationConfig: { responseMimeType: "application/json", temperature: 0.8 }
+                            model: "deepseek-chat",
+                            messages: [
+                                { role: "system", content: systemPrompt },
+                                { role: "user", content: `情境：${situation}\n主角：${selectedMbti}` }
+                            ],
+                            stream: false,
+                            response_format: { "type": "json_object" }
                         })
                     });
 
                     const data = await response.json();
-                    if (!response.ok) {
-                        throw new Error(`[${response.status}] ${data.error?.message || "接口调用异常"}`);
-                    }
+                    if (!response.ok) throw new Error(`[${response.status}] ${data.error?.message || "接口异常"}`);
 
-                    let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    text = text.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
-                    setResult(JSON.parse(text));
+                    let content = data.choices[0].message.content;
+                    content = content.replace(/```json\n?/, '').replace(/\n?```/, '').trim();
+                    setResult(JSON.parse(content));
                 } catch (err) {
                     console.error("API Error:", err);
                     setError(`推演失败。原因：${err.message}`);
@@ -178,14 +178,13 @@
 
                     <div className="relative z-10 max-w-7xl mx-auto flex flex-col gap-6">
                         <header className="text-center py-4">
-                            <h1 className="text-5xl md:text-7xl font-cursive bg-clip-text text-transparent bg-gradient-to-r from-[#fffaa1] via-[#a0d9e8] to-[#e9d2e6] drop-shadow-lg text-white">Cognitive Dynamics</h1>
-                            <p className="text-xs tracking-[0.4em] opacity-50 mt-3 font-light uppercase tracking-widest text-white/80">基于荣格八维的心智推演系统</p>
+                            <h1 className="text-5xl md:text-7xl font-cursive bg-clip-text text-transparent bg-gradient-to-r from-[#fffaa1] via-[#a0d9e8] to-[#e9d2e6] drop-shadow-lg text-white font-bold">Cognitive Dynamics</h1>
+                            <p className="text-xs tracking-[0.4em] opacity-50 mt-3 font-light uppercase tracking-widest text-white">基于荣格八维的心智推演系统</p>
                         </header>
 
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                             {/* 控制区域 */}
                             <div className="lg:col-span-5 flex flex-col gap-6">
-                                {/* 情境面板 - 暖阳黄 */}
                                 <div className="glass-panel p-6 rounded-[2.5rem] space-y-4 transition-all shadow-xl">
                                     <label className="text-[#fffaa1] text-xs font-bold tracking-widest flex items-center gap-2 drop-shadow-sm uppercase">
                                         <Icon name="Compass" color="#fffaa1" /> 设定情境 / Context
@@ -205,7 +204,6 @@
                                         placeholder="请描述一个具体的冲突情境..." 
                                     />
                                     
-                                    {/* 小贴士 - 柔和紫粉 */}
                                     <div className="bg-[#e9d2e6]/10 border border-[#e9d2e6]/20 p-3.5 rounded-2xl flex gap-3 shadow-sm text-white">
                                         <Icon name="Sparkles" color="#e9d2e6" size={14} className="mt-0.5 shrink-0" />
                                         <p className="text-[11px] text-[#e9d2e6] leading-snug font-medium tracking-tight">
@@ -214,9 +212,8 @@
                                     </div>
                                 </div>
 
-                                {/* 类型选择 - 柔和紫粉 */}
                                 <div className="glass-panel p-6 rounded-[2.5rem] space-y-4 shadow-xl">
-                                    <label className="text-[#e9d2e6] text-xs font-bold tracking-widest flex items-center gap-2 uppercase drop-shadow-sm">
+                                    <label className="text-[#e9d2e6] text-xs font-bold tracking-widest flex items-center gap-2 uppercase drop-shadow-sm font-bold">
                                         <Icon name="User" color="#e9d2e6" /> 目标主角 / Subject
                                     </label>
                                     <div className="grid grid-cols-4 gap-2.5">
@@ -245,7 +242,7 @@
                                 </div>
                             </div>
 
-                            {/* 结果区域 */}
+                            {/* 结果显示 */}
                             <div className="lg:col-span-7 h-full">
                                 <div className={`glass-panel p-6 md:p-10 rounded-[3rem] min-h-[600px] flex flex-col transition-all duration-500 ${!result && !loading ? 'justify-center items-center text-center' : ''}`}>
                                     {!result && !loading ? (
@@ -273,14 +270,12 @@
                                                 </div>
                                             </div>
 
-                                            {/* 核心本能 - 暖黄 */}
                                             <div className="bg-[#fffaa1]/10 border border-[#fffaa1]/30 p-6 rounded-[2rem] relative overflow-hidden group shadow-inner">
                                                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#fffaa1]/10 blur-3xl -mr-10 -mt-10 rounded-full"></div>
                                                 <h4 className="text-[#fffaa1] text-[10px] font-black tracking-widest mb-1.5 opacity-80 uppercase">Core Instinct / 核心本能</h4>
                                                 <p className="text-base md:text-lg font-bold leading-relaxed text-white">{result.coreReaction}</p>
                                             </div>
 
-                                            {/* 阳面认知 - 暖黄 */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {result.functions.map((f, i) => (
                                                     <div key={i} className="bg-white/5 p-5 rounded-2xl border border-[#fffaa1]/15 hover:border-[#fffaa1]/50 transition-all shadow-sm">
@@ -293,7 +288,6 @@
                                                 ))}
                                             </div>
 
-                                            {/* 行为预测 - 清透蓝 */}
                                             <div className="bg-[#a0d9e8]/5 border border-[#a0d9e8]/30 p-6 rounded-[2rem] shadow-sm">
                                                 <h4 className="text-[#a0d9e8] text-[10px] font-black mb-4 flex items-center gap-2 tracking-widest uppercase">
                                                     <Icon name="ChevronRight" color="#a0d9e8" size={14} /> Behaviors / 行为预测
@@ -307,7 +301,6 @@
                                                 </ul>
                                             </div>
 
-                                            {/* 应对建议 - 嫩芽绿 */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="bg-[#d8ef74]/10 border border-[#d8ef74]/30 p-5 rounded-2xl shadow-sm">
                                                     <div className="text-[#d8ef74] text-[9px] font-black mb-2 tracking-widest opacity-80 uppercase flex items-center gap-2 text-white"><Icon name="Zap" size={12} color="#d8ef74" /> Action / 行动指南</div>
@@ -319,7 +312,6 @@
                                                 </div>
                                             </div>
 
-                                            {/* 阴暗面 - 柔和紫粉 */}
                                             <div className="relative pt-10 pb-4">
                                                 <div className="absolute inset-0 flex items-center px-4"><div className="w-full border-t border-[#e9d2e6]/20"></div></div>
                                                 <div className="relative flex justify-center">
