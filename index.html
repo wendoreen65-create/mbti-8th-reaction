@@ -118,10 +118,11 @@
                 4. name 字段请写出英文缩写及中文全称，如 "Ni (内倾直觉)"。
                 JSON结构：{ 
                     "coreReaction": "一句话核心反应", 
+                    "innerMonologue": "主角在面对这一情境时的经典内心语录/OS（第一人称，一句话犀利吐槽或真实心声，充分展现性格特质，例如：'我可真是个天才'，要求极简精辟，10-20字左右）",
                     "functions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述具体想法(少于30字)"}], 
                     "behaviors": ["行为预测"], 
                     "advice": {"action": "具体建议", "psychology": "心态参考"}, 
-                    "shadowFunctions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述描述具体想法(少于30字)"}] 
+                    "shadowFunctions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述具体想法(少于30字)"}] 
                 }`;
 
                 try {
@@ -275,6 +276,19 @@
                                                 <h4 className="text-[#fffaa1] text-[10px] font-black tracking-widest mb-1.5 opacity-80 uppercase">Core Instinct / 核心本能</h4>
                                                 <p className="text-base md:text-lg font-bold leading-relaxed text-white">{result.coreReaction}</p>
                                             </div>
+
+                                            {/* 内心 OS 板块 */}
+                                            {result.innerMonologue && (
+                                                <div className="bg-[#e9d2e6]/10 border-l-4 border-[#e9d2e6]/60 p-5 md:p-6 rounded-r-[2rem] rounded-l-lg shadow-sm relative group transition-all hover:bg-[#e9d2e6]/15">
+                                                    <Icon name="MessageCircle" color="#e9d2e6" size={40} className="absolute right-4 bottom-4 opacity-10 transform -rotate-12 group-hover:scale-110 transition-transform" />
+                                                    <h4 className="text-[#e9d2e6] text-[10px] font-black tracking-widest mb-2 opacity-90 uppercase flex items-center gap-2">
+                                                        <Icon name="MessageCircle" color="#e9d2e6" size={14} /> Classic Quote / 经典内心 OS
+                                                    </h4>
+                                                    <p className="text-[14px] md:text-[16px] opacity-100 leading-relaxed font-light text-white font-healing italic whitespace-pre-wrap">
+                                                        "{result.innerMonologue}"
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {result.functions.map((f, i) => (
