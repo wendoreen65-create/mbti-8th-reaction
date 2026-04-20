@@ -22,6 +22,11 @@
             80% { opacity: 0.5; transform: scale(0.9); }
             100% { transform: translateY(-100vh) translateX(30px) scale(1); opacity: 0; }
         }
+        
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+
         .animate-float { animation: float linear infinite; }
         
         ::-webkit-scrollbar { width: 4px; }
@@ -89,6 +94,188 @@
             { id: 4, tag: "危机", title: "证件丢失", content: "在异地旅途中发现包包丢失，包含身份证、护照和所有现金卡片。" }
         ];
 
+        // 预设情境的硬编码结果库
+        const PRESET_RESULTS = {
+            "辛苦准备一周的提案在会议上被老板当众否定，批评语气严厉且不留情面。": {
+                "INTJ": {
+                    "coreReaction": "迅速评估批评的合理性并构思反击或修正方案。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "Ni (内倾直觉)", "desc": "审视老板否定的根本动机，寻找方案与目标脱节的深层原因。"},
+                        {"role": "2nd 辅助功能", "name": "Te (外倾思考)", "desc": "冷酷剥离情绪，分析批评中可操作的客观逻辑缺陷。"},
+                        {"role": "3rd 第三功能", "name": "Fi (内倾情感)", "desc": "内心深处感到不悦，但强制压抑受伤感以维持专业形象。"},
+                        {"role": "4th 劣势功能", "name": "Se (外倾感觉)", "desc": "可能在压力下过度关注老板的严厉语气和会议室的压抑氛围。"}
+                    ],
+                    "behaviors": ["保持沉默，眼神冷峻地记录重点", "会后立即要求明确的修改标准", "独自重构方案逻辑"],
+                    "advice": {"action": "将批评转化为具体的改进指标（KPI）。", "psychology": "承认自己的方案并非完美，老板的态度不等于对你能力的彻底否定。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "Ne (外倾直觉)", "desc": "怀疑老板是否有不可告人的其他备选计划。"},
+                        {"role": "6th 批判功能", "name": "Ti (内倾思考)", "desc": "在内心严厉批判老板给出的理由缺乏严密的内部逻辑。"},
+                        {"role": "7th 盲点功能", "name": "Fe (外倾情感)", "desc": "完全无视会议室里其他人的尴尬反应和老板的情绪需求。"},
+                        {"role": "8th 恶魔功能", "name": "Si (内倾感觉)", "desc": "极端情况下，死抠老板过去言论中的矛盾点进行反驳。"}
+                    ]
+                },
+                "INFP": {
+                    "coreReaction": "感到个人价值被强烈否定，内心受伤但表面强撑。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "Fi (内倾情感)", "desc": "感到极度受伤，认为老板否定的是自己这个人而非仅仅是方案。"},
+                        {"role": "2nd 辅助功能", "name": "Ne (外倾直觉)", "desc": "发散思考：老板是不是早就对我有意见？我是否根本不适合这份工作？"},
+                        {"role": "3rd 第三功能", "name": "Si (内倾感觉)", "desc": "回忆起过去被批评的痛苦经历，加剧当下的自我怀疑。"},
+                        {"role": "4th 劣势功能", "name": "Te (外倾思考)", "desc": "试图强迫自己用客观数据反驳，但在严厉语气下难以组织有效逻辑。"}
+                    ],
+                    "behaviors": ["低头不语，强忍泪水或情绪崩溃", "会后可能需要独处平复情绪", "考虑离职或转换赛道"],
+                    "advice": {"action": "暂时离开高压环境，事后以书面形式确认修改意见。", "psychology": "区分“我的作品”和“我”，批评方案不等于批评你个人的核心价值。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "Fe (外倾情感)", "desc": "对老板破坏团队和谐的粗暴方式感到强烈的不满。"},
+                        {"role": "6th 批判功能", "name": "Ni (内倾直觉)", "desc": "陷入悲观宿命论：这预示着我在公司的发展已经彻底完蛋了。"},
+                        {"role": "7th 盲点功能", "name": "Se (外倾感觉)", "desc": "对当下会议的具体细节和应对策略感到完全茫然、失去抓手。"},
+                        {"role": "8th 恶魔功能", "name": "Ti (内倾思考)", "desc": "用极度尖酸刻薄的内在逻辑将自己贬低得一无是处。"}
+                    ]
+                },
+                "DEFAULT": {
+                    "coreReaction": "启动自我保护机制，处理危机。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "主导 (Dominant)", "desc": "以最习惯的方式应对突发压力。"},
+                        {"role": "2nd 辅助功能", "name": "辅助 (Auxiliary)", "desc": "寻找外部信息或内在逻辑支撑。"},
+                        {"role": "3rd 第三功能", "name": "第三 (Tertiary)", "desc": "产生防御性的情绪或认知波动。"},
+                        {"role": "4th 劣势功能", "name": "劣势 (Inferior)", "desc": "在极端压力下可能失控或暴露弱点。"}
+                    ],
+                    "behaviors": ["根据性格倾向采取应对策略", "事后复盘或情绪消化"],
+                    "advice": {"action": "保持冷静，理性应对。", "psychology": "将压力视为成长的契机。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "对立 (Opposing)", "desc": "对抗外部压力的防御机制。"},
+                        {"role": "6th 批判功能", "name": "批判 (Critical)", "desc": "对自身或他人的严厉苛责。"},
+                        {"role": "7th 盲点功能", "name": "盲点 (Trickster)", "desc": "在此情境下完全无法顾及的盲区。"},
+                        {"role": "8th 恶魔功能", "name": "恶魔 (Demon)", "desc": "可能引发的破坏性冲动。"}
+                    ]
+                }
+            },
+            "伴侣突然变得沉默寡言，拒绝沟通且不说明原因，家里气氛降至冰点。": {
+                "INFP": {
+                    "coreReaction": "陷入情绪内耗，疯狂反思自己是否做错了什么。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "Fi (内倾情感)", "desc": "敏锐感知到气氛降至冰点，内心涌起强烈的被遗弃感和自责。"},
+                        {"role": "2nd 辅助功能", "name": "Ne (外倾直觉)", "desc": "疯狂发散：是我昨晚说错话了？还是他不爱我了？还是他出轨了？"},
+                        {"role": "3rd 第三功能", "name": "Si (内倾感觉)", "desc": "不断翻找过去的记忆碎片，试图佐证对方变心的蛛丝马迹。"},
+                        {"role": "4th 劣势功能", "name": "Te (外倾思考)", "desc": "极力想要对方给出一个“明确的说法”，但往往表达得情绪化且混乱。"}
+                    ],
+                    "behaviors": ["小心翼翼地试探", "独自在一旁黯然神伤", "最终可能情绪爆发，哭泣质问"],
+                    "advice": {"action": "停止毫无根据的猜想，留给双方物理空间，之后温和地表达你的感受而非指责。", "psychology": "对方的沉默不一定是你的错，可能是对方自身正在处理压力。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "Fe (外倾情感)", "desc": "对伴侣不顾及自己情绪的冷暴力行为感到愤怒。"},
+                        {"role": "6th 批判功能", "name": "Ni (内倾直觉)", "desc": "确信这段关系已经走向尽头，无法挽回。"},
+                        {"role": "7th 盲点功能", "name": "Se (外倾感觉)", "desc": "忽略了伴侣可能身体疲惫或遇到实际困难的客观现实。"},
+                        {"role": "8th 恶魔功能", "name": "Ti (内倾思考)", "desc": "用冰冷的逻辑论证自己根本不值得被爱。"}
+                    ]
+                },
+                "INTJ": {
+                    "coreReaction": "启动问题解决模式，分析冷战原因并评估关系走向。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "Ni (内倾直觉)", "desc": "试图看透伴侣沉默背后的真实意图和未来关系趋势。"},
+                        {"role": "2nd 辅助功能", "name": "Te (外倾思考)", "desc": "要求对方直接说明原因：“效率点，问题在哪，怎么解决？”。"},
+                        {"role": "3rd 第三功能", "name": "Fi (内倾情感)", "desc": "内心隐隐感到烦躁或受伤，但认为情绪暴露毫无意义。"},
+                        {"role": "4th 劣势功能", "name": "Se (外倾感觉)", "desc": "对家里压抑的物理氛围感到不适，可能选择出门逃避。"}
+                    ],
+                    "behaviors": ["给对方空间，自己去做其他事", "直接询问原因，被拒后不再追问", "默默做最坏打算"],
+                    "advice": {"action": "不要试图用逻辑去“解决”对方的情绪，有时陪伴本身就是答案。", "psychology": "接纳关系中偶尔的非理性状态，无需立刻要个结果。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "Ne (外倾直觉)", "desc": "厌恶这种毫无头绪的猜测游戏。"},
+                        {"role": "6th 批判功能", "name": "Ti (内倾思考)", "desc": "批判伴侣的冷战行为是不成熟、低效且毫无逻辑的。"},
+                        {"role": "7th 盲点功能", "name": "Fe (外倾情感)", "desc": "完全不知如何提供情绪价值来安抚伴侣。"},
+                        {"role": "8th 恶魔功能", "name": "Si (内倾感觉)", "desc": "偏执地翻旧账，认为对方一贯如此，不可救药。"}
+                    ]
+                },
+                 "DEFAULT": {
+                    "coreReaction": "面对情感僵局的本能应对。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "主导 (Dominant)", "desc": "在情感冲突中的第一反应。"},
+                        {"role": "2nd 辅助功能", "name": "辅助 (Auxiliary)", "desc": "试图理解或改变当前僵局的方式。"},
+                        {"role": "3rd 第三功能", "name": "第三 (Tertiary)", "desc": "情绪或认知的防御机制。"},
+                        {"role": "4th 劣势功能", "name": "劣势 (Inferior)", "desc": "处理亲密关系时的软肋。"}
+                    ],
+                    "behaviors": ["特定的沟通或回避模式"],
+                    "advice": {"action": "提供适合该性格的沟通建议。", "psychology": "情感调节的视角。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "对立 (Opposing)", "desc": "对伴侣行为的负面解读。"},
+                        {"role": "6th 批判功能", "name": "批判 (Critical)", "desc": "内心深处的严厉声音。"},
+                        {"role": "7th 盲点功能", "name": "盲点 (Trickster)", "desc": "难以觉察的关系盲区。"},
+                        {"role": "8th 恶魔功能", "name": "恶魔 (Demon)", "desc": "关系破裂边缘的极端反应。"}
+                    ]
+                }
+            },
+            "被朋友带去一个全是陌生人的聚会，朋友中途离开，你不得不开始面对社交。": {
+                 "INFP": {
+                    "coreReaction": "极度内耗，渴望隐身或逃离，寻找角落自处。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "Fi (内倾情感)", "desc": "感到极度不适和被抛弃的委屈，只想保护自己的内在能量。"},
+                        {"role": "2nd 辅助功能", "name": "Ne (外倾直觉)", "desc": "脑补各种尴尬场景：别人肯定觉得我很奇怪，我是个局外人。"},
+                        {"role": "3rd 第三功能", "name": "Si (内倾感觉)", "desc": "紧抓熟悉的物品（如手机、饮料杯），试图获取安全感。"},
+                        {"role": "4th 劣势功能", "name": "Te (外倾思考)", "desc": "极其困难地逼迫自己想出干瘪的客套话来应付场面。"}
+                    ],
+                    "behaviors": ["躲在角落滑手机", "跟宠物玩（如果有）", "寻找借口提前溜走"],
+                    "advice": {"action": "不必强迫自己融入，找一个看起来友善的落单者简单聊聊即可，或者直接离开。", "psychology": "你的价值不由你在派对上的活跃度决定，允许自己社恐。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "Fe (外倾情感)", "desc": "对那些如鱼得水的人感到排斥，觉得他们虚伪。"},
+                        {"role": "6th 批判功能", "name": "Ni (内倾直觉)", "desc": "断定这个聚会上不可能有人懂自己，社交毫无意义。"},
+                        {"role": "7th 盲点功能", "name": "Se (外倾感觉)", "desc": "完全无法自然地融入当下的欢乐氛围和肢体互动。"},
+                        {"role": "8th 恶魔功能", "name": "Ti (内倾思考)", "desc": "用极端的逻辑攻击带自己来的朋友，认为友谊不值得信任。"}
+                    ]
+                },
+                 "DEFAULT": {
+                    "coreReaction": "社交压力下的适应策略。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "主导 (Dominant)", "desc": "主导功能在社交场域的运作。"},
+                        {"role": "2nd 辅助功能", "name": "辅助 (Auxiliary)", "desc": "辅助功能如何协助破冰或防御。"},
+                        {"role": "3rd 第三功能", "name": "第三 (Tertiary)", "desc": "社交压力下的缓解方式。"},
+                        {"role": "4th 劣势功能", "name": "劣势 (Inferior)", "desc": "社交能量耗尽时的表现。"}
+                    ],
+                    "behaviors": ["特定的社交行为倾向"],
+                    "advice": {"action": "提供有效的社交策略或退路。", "psychology": "心态调整建议。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "对立 (Opposing)", "desc": "对陌生环境的防御。"},
+                        {"role": "6th 批判功能", "name": "批判 (Critical)", "desc": "对环境或自身的批判。"},
+                        {"role": "7th 盲点功能", "name": "盲点 (Trickster)", "desc": "社交中的盲区。"},
+                        {"role": "8th 恶魔功能", "name": "恶魔 (Demon)", "desc": "极端社交压力下的崩溃。"}
+                    ]
+                }
+            },
+            "在异地旅途中发现包包丢失，包含身份证、护照和所有现金卡片。": {
+                "INTJ": {
+                    "coreReaction": "压抑慌乱，立即启动止损程序和备用计划。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "Ni (内倾直觉)", "desc": "迅速预见证件丢失带来的连锁后果（航班、住宿受阻）。"},
+                        {"role": "2nd 辅助功能", "name": "Te (外倾思考)", "desc": "高效排序任务：挂失、报警、联系使馆，不掺杂任何情绪。"},
+                        {"role": "3rd 第三功能", "name": "Fi (内倾情感)", "desc": "内心对自己的疏忽感到极其愤怒，但暂时封存这种情绪。"},
+                        {"role": "4th 劣势功能", "name": "Se (外倾感觉)", "desc": "强迫自己回忆走过的路线，但可能因为平时忽略细节而难以想起来。"}
+                    ],
+                    "behaviors": ["一言不发地拨打各方电话", "拒绝同行者的无效安抚", "冷静得让人觉得可怕"],
+                    "advice": {"action": "按部就班执行止损即可，同时接受同行者的实际帮助。", "psychology": "意外发生是概率事件，原谅自己的失误，你的解决能力远大于这个麻烦。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "Ne (外倾直觉)", "desc": "排斥各种“如果当时…”的无用假设。"},
+                        {"role": "6th 批判功能", "name": "Ti (内倾思考)", "desc": "在脑海中严密推理是谁、在哪个环节偷了包，并批判安保系统。"},
+                        {"role": "7th 盲点功能", "name": "Fe (外倾情感)", "desc": "对同行者的惊慌失措感到厌烦，认为那是添乱。"},
+                        {"role": "8th 恶魔功能", "name": "Si (内倾感觉)", "desc": "死抠刚才发生的细节，陷入强迫症般的重现循环。"}
+                    ]
+                },
+                 "DEFAULT": {
+                    "coreReaction": "面对突发危机的应急反应。",
+                    "functions": [
+                        {"role": "1st 主导功能", "name": "主导 (Dominant)", "desc": "危机时刻的首要判断依据。"},
+                        {"role": "2nd 辅助功能", "name": "辅助 (Auxiliary)", "desc": "解决危机的工具与手段。"},
+                        {"role": "3rd 第三功能", "name": "第三 (Tertiary)", "desc": "危机中的情绪与认知调节。"},
+                        {"role": "4th 劣势功能", "name": "劣势 (Inferior)", "desc": "压力下可能导致的失误或崩溃。"}
+                    ],
+                    "behaviors": ["具体的危机应对行为"],
+                    "advice": {"action": "提供清晰的行动指南。", "psychology": "危机后的心理重建。"},
+                    "shadowFunctions": [
+                        {"role": "5th 对立功能", "name": "对立 (Opposing)", "desc": "对危机的负面应对。"},
+                        {"role": "6th 批判功能", "name": "批判 (Critical)", "desc": "对责任的追究。"},
+                        {"role": "7th 盲点功能", "name": "盲点 (Trickster)", "desc": "危机处理中的盲区。"},
+                        {"role": "8th 恶魔功能", "name": "恶魔 (Demon)", "desc": "极端危机下的破坏性行为。"}
+                    ]
+                }
+            }
+        };
+
         const DEFAULT_BG = "https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=2500";
 
         function App() {
@@ -101,13 +288,22 @@
             const [bgImage, setBgImage] = useState(DEFAULT_BG);
 
             const handleGenerate = async () => {
-                const apiKey = "sk-02c64907d4564bf7a2f3fe76dff605e1"; 
+                if (!situation.trim()) { setError('请输入具体的情境！'); return; }
+                
+                setError(''); setResult(null); setDisplayMbti(selectedMbti);
+
+                // 检查是否命中硬编码的预设情境
+                if (PRESET_RESULTS[situation]) {
+                    const presetData = PRESET_RESULTS[situation][selectedMbti] || PRESET_RESULTS[situation]["DEFAULT"];
+                    setResult(presetData);
+                    return; // 命中预设，直接返回，不调用API
+                }
+
+                // 未命中预设，调用API
+                const apiKey = "sk-02c64907d4564bf7a2f3fe76dff605e1"; // 已回退为内置 API
                 const apiUrl = "https://api.deepseek.com/chat/completions";
 
-                if (!situation.trim()) { setError('请输入具体的情境！'); return; }
-                if (!apiKey) { setError('未检测到有效配置。'); return; }
-
-                setLoading(true); setError(''); setResult(null); setDisplayMbti(selectedMbti);
+                setLoading(true);
 
                 const systemPrompt = `你是一个精通荣格八维和MBTI的心理推演专家。客观、极简、禁止煽情。必须返回纯JSON格式，严禁包含Markdown代码块标识。
                 推演要求：针对设定的情境和主角性格，直接推演其心理运作。
@@ -118,7 +314,6 @@
                 4. name 字段请写出英文缩写及中文全称，如 "Ni (内倾直觉)"。
                 JSON结构：{ 
                     "coreReaction": "一句话核心反应", 
-                    "innerMonologue": "主角在面对这一情境时的经典内心语录/OS（第一人称，一句话犀利吐槽或真实心声，充分展现性格特质，例如：'我可真是个天才'，要求极简精辟，10-20字左右）",
                     "functions": [{"role": "序号+职能中文", "name": "缩写(全称)", "desc": "描述具体想法(少于30字)"}], 
                     "behaviors": ["行为预测"], 
                     "advice": {"action": "具体建议", "psychology": "心态参考"}, 
@@ -186,6 +381,7 @@
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                             {/* 控制区域 */}
                             <div className="lg:col-span-5 flex flex-col gap-6">
+
                                 <div className="glass-panel p-6 rounded-[2.5rem] space-y-4 transition-all shadow-xl">
                                     <label className="text-[#fffaa1] text-xs font-bold tracking-widest flex items-center gap-2 drop-shadow-sm uppercase">
                                         <Icon name="Compass" color="#fffaa1" /> 设定情境 / Context
@@ -204,13 +400,6 @@
                                         className="w-full h-36 bg-black/40 border border-[#fffaa1]/20 rounded-2xl p-4 text-sm focus:outline-none focus:border-[#fffaa1]/60 transition-all placeholder:opacity-30 leading-relaxed font-healing text-white"
                                         placeholder="请描述一个具体的冲突情境..." 
                                     />
-                                    
-                                    <div className="bg-[#e9d2e6]/10 border border-[#e9d2e6]/20 p-3.5 rounded-2xl flex gap-3 shadow-sm text-white">
-                                        <Icon name="Sparkles" color="#e9d2e6" size={14} className="mt-0.5 shrink-0" />
-                                        <p className="text-[11px] text-[#e9d2e6] leading-snug font-medium tracking-tight">
-                                            小贴士：输入目标对象当前所面临的情境，可以尝试加入具体冲突和压力点获得更精准的反馈。
-                                        </p>
-                                    </div>
                                 </div>
 
                                 <div className="glass-panel p-6 rounded-[2.5rem] space-y-4 shadow-xl">
@@ -228,18 +417,21 @@
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex justify-between items-center px-2">
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex justify-between items-center px-2 mb-1">
                                         <label className="text-[10px] opacity-40 hover:opacity-100 cursor-pointer flex items-center gap-2 transition-opacity font-bold uppercase">
                                             <Icon name="Image" size={12} /> Bg Image <input type="file" className="hidden" onChange={e => setBgImage(URL.createObjectURL(e.target.files[0]))} />
                                         </label>
                                         {bgImage !== DEFAULT_BG && <button onClick={() => setBgImage(DEFAULT_BG)} className="text-[10px] opacity-40 hover:text-red-400 font-bold uppercase">Reset</button>}
                                     </div>
+                                    
                                     <button onClick={handleGenerate} disabled={loading} 
-                                        className="w-full py-4.5 bg-[#fffaa1] text-[#2d2e14] font-black rounded-3xl tracking-[0.2em] shadow-xl active:scale-95 transition-all disabled:opacity-50">
-                                        {loading ? '解码中...' : '解码心智回路'}
+                                        className="w-full py-4.5 bg-[#fffaa1] text-[#2d2e14] font-black rounded-3xl tracking-[0.2em] shadow-xl active:scale-95 transition-all disabled:opacity-50 relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                                        <span className="relative z-10">{loading ? '解码中...' : '解码心智回路'}</span>
                                     </button>
-                                    {error && <div className="text-[#fffaa1] text-[11px] p-4 bg-red-900/30 border border-red-500/30 rounded-2xl leading-relaxed text-center shadow-lg">{error}</div>}
+
+                                    {error && <div className="text-[#fffaa1] text-[11px] p-4 bg-red-900/30 border border-red-500/30 rounded-2xl leading-relaxed text-center shadow-lg mt-2">{error}</div>}
                                 </div>
                             </div>
 
@@ -276,19 +468,6 @@
                                                 <h4 className="text-[#fffaa1] text-[10px] font-black tracking-widest mb-1.5 opacity-80 uppercase">Core Instinct / 核心本能</h4>
                                                 <p className="text-base md:text-lg font-bold leading-relaxed text-white">{result.coreReaction}</p>
                                             </div>
-
-                                            {/* 内心 OS 板块 */}
-                                            {result.innerMonologue && (
-                                                <div className="bg-[#e9d2e6]/10 border-l-4 border-[#e9d2e6]/60 p-5 md:p-6 rounded-r-[2rem] rounded-l-lg shadow-sm relative group transition-all hover:bg-[#e9d2e6]/15">
-                                                    <Icon name="MessageCircle" color="#e9d2e6" size={40} className="absolute right-4 bottom-4 opacity-10 transform -rotate-12 group-hover:scale-110 transition-transform" />
-                                                    <h4 className="text-[#e9d2e6] text-[10px] font-black tracking-widest mb-2 opacity-90 uppercase flex items-center gap-2">
-                                                        <Icon name="MessageCircle" color="#e9d2e6" size={14} /> Classic Quote / 经典内心 OS
-                                                    </h4>
-                                                    <p className="text-[14px] md:text-[16px] opacity-100 leading-relaxed font-light text-white font-healing italic whitespace-pre-wrap">
-                                                        "{result.innerMonologue}"
-                                                    </p>
-                                                </div>
-                                            )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {result.functions.map((f, i) => (
@@ -351,6 +530,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             );
         }
